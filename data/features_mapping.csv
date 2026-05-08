@@ -1,0 +1,151 @@
+feature_key,feature_present,feature_past,feature_gerund,feature_person,feature_type
+10 years old,is 10 years old,been 10 years old,being 10 years old,10-year-old person,demographics
+19 years old,is 19 years old,been 19 years old,being 19 years old,19-year-old person,demographics
+24 years old,is 24 years old,been 24 years old,being 24 years old,24-year-old person,demographics
+26 years old,is 26 years old,been 26 years old,being 26 years old,26-year-old person,demographics
+27 years old,is 27 years old,been 27 years old,being 27 years old,27-year-old person,demographics
+32 years old,is 32 years old,been 32 years old,being 32 years old,32-year-old person,demographics
+34 years old,is 34 years old,been 34 years old,being 34 years old,34-year-old person,demographics
+43 years old,is 43 years old,been 43 years old,being 43 years old,43-year-old person,demographics
+45 years old,is 45 years old,been 45 years old,being 45 years old,45-year-old person,demographics
+68 years old,is 68 years old,been 68 years old,being 68 years old,68-year-old person,demographics
+absent-minded personality,has an absent-minded personality,had an absent-minded personality,having an absent-minded personality,person with an absent-minded personality,dispositions
+admire their father,admires his father,admired his father,admiring his father,person who admires his father,dispositions
+ambitious person,is an ambitious person,been an ambitious person,being an ambitious person,ambitious person,dispositions
+angered by wilson comments,was angered by Wilson's comments,been angered by Wilson's comments,being angered by Wilson's comments,,actions
+artist,is an artist,been an artist,being an artist,artist,demographics
+asian,is Asian,been Asian,being Asian,Asian person,demographics
+asthma,has asthma,had asthma,having asthma,person with asthma,demographics
+attend couples therapy years ago,attended couples therapy years ago,attended couples therapy years ago,attending couples therapy years ago,person who had attended couples therapy,dispositions
+average iq,has an average IQ,had an average IQ,having an average IQ,person with an average IQ,demographics
+babysit on weekends,babysits on the weekends,babysat on the weekends,babysitting on the weekends,babysitter,dispositions
+black,is Black,been Black,being Black,Black person,demographics
+build their barn near border with vincent property,built his barn near the border with Vincent's property,built their barn near the border with Vincent's property,building his barn near the border with Vincent's property,,actions
+calm personality,has a calm personality,had a calm personality,having a calm personality,person with a calm personality,dispositions
+cardiologist,is a cardiologist,been a cardiologist,being a cardiologist,cardiologist,demographics
+check annie vitals,checked Annie's vitals,checked Annie's vitals,checking Annie's vitals,,actions
+check that there were no other cars nearby,checked that there were no other cars nearby,checked that there were no other cars nearby,checking that there were no other cars nearby,,actions
+cheerful personality,has a cheerful personality,had a cheerful personality,having a cheerful personality,person with a cheerful personality,dispositions
+christian,is Christian,been Christian,being Christian,Christian person,demographics
+clinical research assistant,is a clinical research assistant,been a clinical research assistant,being a clinical research assistant,clinical research assistant,demographics
+collect vinyl records,collects vinyl records,collected vinyl records,collecting vinyl records,person who collects vinyl records,dispositions
+college student,is a college student,been a college student,being a college student,college student,demographics
+communicate and interact well with children,communicates and interacts well with children,communicated and interacted well with children,communicating and interacting well with children,person who interacts well with children,dispositions
+compassionate person,is a compassionate person,been a compassionate person,being a compassionate person,compassionate person,dispositions
+compose music in their free time,composes music in her free time,composed music in their free time,composing music in her free time,person who composes music,dispositions
+concerned with hayfires,was concerned with hayfires,been concerned with hayfires,being concerned with hayfires,,actions
+consider buying hay-drying equipment,considered buying hay-drying equipment,considered buying hay-drying equipment,considering buying hay-drying equipment,,actions
+counselor,is a counselor,been a counselor,being a counselor,counselor,demographics
+courteous person,is a courteous person,been a courteous person,being a courteous person,courteous person,dispositions
+curious personality,has a curious personality,had a curious personality,having a curious personality,person with a curious personality,dispositions
+decide not to buy hay-drying equipment,decided not to buy hay-drying equipment,decided not to buy hay-drying equipment,deciding not to buy hay-drying equipment,,actions
+do their annual car maintenance,did her annual car maintenance,done their annual car maintenance,doing her annual car maintenance,,actions
+drive peter to appointments and errands,often drives Peter to appointments and errands,often driven Peter to appointments and errands,often driving Peter to appointments and errands,person who often drives,dispositions
+drive under speed limit,drove under the speed limit,driven under the speed limit,driving under the speed limit,,actions
+early riser,is an early riser,been an early riser,being an early riser,early riser,dispositions
+empathetic person,is an empathetic person,been an empathetic person,being an empathetic person,empathetic person,dispositions
+enjoy browsing twitter,enjoys browsing Twitter,enjoyed browsing Twitter,enjoying browsing Twitter,person who enjoys browsing Twitter,dispositions
+enjoy cooking,enjoys cooking,enjoyed cooking,enjoying cooking,person who enjoys cooking,dispositions
+enjoy fishing,enjoys fishing,enjoyed fishing,enjoying fishing,person who enjoys fishing,dispositions
+enjoy gardening,enjoys gardening,enjoyed gardening,enjoying gardening,person who enjoys gardening,dispositions
+enjoy go to music concerts,enjoys going to music concerts,enjoyed going to music concerts,enjoying going to music concerts,person who enjoys music concerts,dispositions
+enjoy italian cuisine,enjoys Italian cuisine,enjoyed Italian cuisine,enjoying Italian cuisine,person who enjoys Italian cuisine,dispositions
+enjoy jazz music,enjoys jazz music,enjoyed jazz music,enjoying jazz music,person who enjoys jazz music,dispositions
+enjoy listen to country music,enjoys listening to country music,enjoyed listening to country music,enjoying listening to country music,person who enjoys country music,dispositions
+enjoy listen to rock music,enjoys listening to rock music,enjoyed listening to rock music,enjoying listening to rock music,person who enjoys rock music,dispositions
+enjoy oil painting,enjoys oil painting,enjoyed oil painting,enjoying oil painting,person who enjoys oil painting,dispositions
+enjoy play hide-and-seek,enjoys playing hide-and-seek,enjoyed playing hide-and-seek,enjoying playing hide-and-seek,person who enjoys playing hide-and-seek,dispositions
+enjoy read science fiction,enjoys reading science fiction,enjoyed reading science fiction,enjoying reading science fiction,person who enjoys reading science fiction,dispositions
+enjoy swimming,enjoys swimming,enjoyed swimming,enjoying swimming,person who enjoys swimming,dispositions
+enjoy watching sports,enjoys watching sports,enjoyed watching sports,enjoying watching sports,person who enjoys watching sports,dispositions
+enjoy watching tv shows,enjoys watching TV shows,enjoyed watching TV shows,enjoying watching TV shows,person who enjoys watching TV shows,dispositions
+experienced driver,is an experienced driver,been an experienced driver,being an experienced driver,experienced driver,dispositions
+extroverted and outgoing,is extroverted and outgoing,been extroverted and outgoing,being extroverted and outgoing,extroverted and outgoing person,dispositions
+farmer,is a farmer,been a farmer,being a farmer,farmer,demographics
+feel hurt after learning about cheating,felt hurt after learning about the cheating,felt hurt after learning about the cheating,feeling hurt after learning about the cheating,,actions
+female,is female,been female,being female,female person,demographics
+find key in their father jacket pocket,found the key in his father's jacket pocket,found the key in their father's jacket pocket,finding the key in his father's jacket pocket,,actions
+focus on children,focused on the children,focused on the children,focusing on the children,,actions
+friends with peter for many years,has been friends with Peter for many years,been friends with Peter for many years,being friends with Peter for many years,long-time friend,dispositions
+generic,,,,generic person,generic
+get off at same stop as oliver,got off at the same stop as Oliver,gotten off at the same stop as Oliver,getting off at the same stop as Oliver,,actions
+go to emergency room for bruises,went to the emergency room for bruises,gone to the emergency room for bruises,going to the emergency room for bruises,,actions
+go to neighbor house for dinner,went to a neighbor's house for dinner,gone to a neighbor's house for dinner,going to a neighbor's house for dinner,,actions
+grab revolver,grabbed the revolver,grabbed the revolver,grabbing the revolver,,actions
+grow corn,grows corn,grown corn,growing corn,person who grows corn,dispositions
+grow hay,grows hay,grown hay,growing hay,person who grows hay,dispositions
+hang out at local bar with cousins,hung out at the local bar with cousins,hung out at the local bar with cousins,hanging out at the local bar with cousins,,actions
+hard-work,is hard-working,been hard-working,being hard-working,hard-working person,dispositions
+hear loud drilling and yelling from construction above,heard loud drilling and yelling from the construction above,heard loud drilling and yelling from the construction above,hearing loud drilling and yelling from the construction above,,actions
+hide in hall closet,hid in the hall closet,hid in the hall closet,hiding in the hall closet,,actions
+high blood pressure,has high blood pressure,had high blood pressure,having high blood pressure,person with high blood pressure,demographics
+humorous personality,has a humorous personality,had a humorous personality,having a humorous personality,person with a humorous personality,dispositions
+impatient sometimes,can be impatient sometimes,been impatient sometimes,being impatient sometimes,person who can be impatient,dispositions
+invite friends over to play,invited friends over to play,invited friends over to play,inviting friends over to play,,actions
+laid-back personality,has a laid-back personality,had a laid-back personality,having a laid-back personality,person with a laid-back personality,dispositions
+leave bathroom to talk to their partner,left the bathroom to talk to her partner,left the bathroom to talk to their partner,leaving the bathroom to talk to her partner,,actions
+legally blind,is legally blind,been legally blind,being legally blind,legally blind person,demographics
+listen to radio while drive,listened to the radio while driving,listened to the radio while driving,listening to the radio while driving,,actions
+live alone,lives alone,lived alone,living alone,person who lives alone,dispositions
+live in tornado-affected area,lives in a tornado-affected area,lived in a tornado-affected area,living in a tornado-affected area,,actions
+male,is male,been male,being male,male person,demographics
+meet with consultants,met with consultants,met with consultants,meeting with consultants,,actions
+multiracial,is multiracial,been multiracial,being multiracial,multiracial person,demographics
+native american,is Native American,been Native American,being Native American,Native American person,demographics
+nearsighted,is nearsighted,been nearsighted,being nearsighted,nearsighted person,demographics
+not call for help,did not call for help,not called for help,not calling for help,,actions
+not hear tornado sirens,did not hear the tornado sirens,not heard the tornado sirens,not hearing the tornado sirens,,actions
+not mute phone notifications while drive,did not mute phone notifications while driving,not muted phone notifications while driving,not muting phone notifications while driving,,actions
+not order any other heart tests,did not order any other heart tests,not ordered any other heart tests,not ordering any other heart tests,,actions
+not order mammogram,did not order a mammogram,not ordered a mammogram,not ordering a mammogram,,actions
+not seek help after emergency room incident,did not seek help after the emergency room incident,not sought help after the emergency room incident,not seeking help after the emergency room incident,,actions
+not smoke,does not smoke,not smoked,not smoking,non-smoker,demographics
+not speed,was not speeding,not sped,not speeding,,actions
+not talk back to wilson,did not talk back to Wilson,not talked back to Wilson,not talking back to Wilson,,actions
+open gun cabinet with key,opened the gun cabinet with the key,opened the gun cabinet with the key,opening the gun cabinet with the key,,actions
+opinionated sometimes,can be opinionated sometimes,been opinionated sometimes,being opinionated sometimes,person who can be opinionated,dispositions
+order annie electrocardiogram (ecg/ekg),ordered Annie an electrocardiogram (ECG/EKG),ordered Annie an electrocardiogram (ECG/EKG),ordering Annie an electrocardiogram (ECG/EKG),,actions
+organized person,is an organized person,been an organized person,being an organized person,organized person,dispositions
+patriotic,is patriotic,been patriotic,being patriotic,patriotic person,dispositions
+peanut allergy,has a peanut allergy,had a peanut allergy,having a peanut allergy,person with a peanut allergy,demographics
+physically attack oliver,physically attacked Oliver,physically attacked Oliver,physically attacking Oliver,,actions
+pick up pistol to play with,picked up a pistol to play with,picked up a pistol to play with,picking up a pistol to play with,,actions
+pick up their partner call while filling bathtub,picked up her partner's call while filling the bathtub,picked up their partner's call while filling the bathtub,picking up her partner's call while filling the bathtub,,actions
+picky eater,is a picky eater,been a picky eater,being a picky eater,picky eater,dispositions
+play games with children,played games with the children,played games with the children,playing games with the children,,actions
+play loud upbeat music with children,played loud upbeat music with the children,played loud upbeat music with the children,playing loud upbeat music with the children,,actions
+ptsd,has PTSD,had PTSD,having PTSD,person with PTSD,demographics
+push wilson to ground,pushed Wilson to the ground,pushed Wilson to the ground,pushing Wilson to the ground,,actions
+quiet on subway,was quiet on the subway,been quiet on the subway,being quiet on the subway,,actions
+read children books with benji,read children's books with Benji,read children's books with Benji,reading children's books with Benji,,actions
+red hair,has red hair,had red hair,having red hair,person with red hair,demographics
+regularly drink coffee,regularly drinks coffee,regularly drank coffee,regularly drinking coffee,person who regularly drinks coffee,dispositions
+restaurant waiter,is a restaurant waiter,been a restaurant waiter,being a restaurant waiter,restaurant waiter,demographics
+review annie medical history and symptoms,reviewed Annie's medical history and symptoms,reviewed Annie's medical history and symptoms,reviewing Annie's medical history and symptoms,,actions
+run home daycare business,runs a home daycare business,ran a home daycare business,running a home daycare business,home daycare business owner,demographics
+scared when franklin screamed,was scared when Franklin screamed,been scared when Franklin screamed,being scared when Franklin screamed,,actions
+sensitive sometimes,can be sensitive sometimes,been sensitive sometimes,being sensitive sometimes,person who can be sensitive,dispositions
+several drink over course of two hours,had several drinks over the course of two hours,had several drinks over the course of two hours,having several drinks over the course of two hours,,actions
+shoot franklin with revolver,shot Franklin with the revolver,shot Franklin with the revolver,shooting Franklin with the revolver,,actions
+single,is single,been single,being single,single person,demographics
+sit for few minutes after hanging up,sat for a few minutes after hanging up,sat for a few minutes after hanging up,sitting for a few minutes after hanging up,,actions
+slam brakes after seeing deer,slammed the brakes after seeing the deer,slammed the brakes after seeing the deer,slamming the brakes after seeing the deer,,actions
+software engineer,is a software engineer,been a software engineer,being a software engineer,software engineer,demographics
+startled by deer,was startled by the deer,been startled by the deer,being startled by the deer,,actions
+step on paul torso,stepped on Paul's torso,stepped on Paul's torso,stepping on Paul's torso,,actions
+stingy sometimes,can be stingy sometimes,been stingy sometimes,being stingy sometimes,person who is sometimes stingy,dispositions
+stubborn sometimes,can be stubborn sometimes,been stubborn sometimes,being stubborn sometimes,person who can be stubborn,dispositions
+studious person,is a studious person,been a studious person,being a studious person,studious person,dispositions
+study psychology,studies psychology,studied psychology,studying psychology,person studying psychology,dispositions
+take peek at text,took a peek at the text,taken a peek at the text,taking a peek at the text,,actions
+take subway home,took the subway home,taken the subway home,taking the subway home,,actions
+their white cane slip between paul legs,her white cane slipped between Paul's legs,had their white cane slip between Paul's legs,her white cane slipping between Paul's legs,,actions
+timid person,is a timid person,been a timid person,being a timid person,timid person,dispositions
+use their white cane while walking home,used her white cane while walking home,used their white cane while walking home,using her white cane while walking home,,actions
+use white cane to guide themselves,uses a white cane to guide herself,used a white cane to guide themselves,using a white cane to guide herself,person who uses a white cane,dispositions
+veer into cyclist while read text,veered into the cyclist while reading the text,veered into the cyclist while reading the text,veering into the cyclist while reading the text,,actions
+veteran,is a veteran,been a veteran,being a veteran,veteran,demographics
+weigh 70 lbs,weighs 70 lbs,weighed 70 lbs,weighing 70 lbs,person who weighs 70 lbs,demographics
+white,is White,been White,being White,White person,demographics
+work for over ten years at same hospital,has worked for over ten years at the same hospital,worked for over ten years at the same hospital,having worked for over ten years at the same hospital,person with 10+ years of work experience,dispositions
+work with pamela for many years,has worked with Pamela for many years,worked with Pamela for many years,working with Pamela for many years,person with a long-term client relationship,dispositions

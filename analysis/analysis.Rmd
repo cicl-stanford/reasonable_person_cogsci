@@ -1,0 +1,1100 @@
+---
+title: "How to make a reasonable person"
+date: "May 8, 2026"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_depth: 4
+    toc_float: true
+    theme: cosmo
+    highlight: tango
+---
+
+```{r setup, include = F, message = F, warning = F}
+require(knitr)         # for knitting  
+library(ggstatsplot)   # extension of ggplot2
+library(lme4)          # for mixed effects models 
+library(lmerTest)
+library(DT)            # for datatable() function 
+library(brms)          # for Bayesian regression models
+library(emmeans)       # for estimated marginal means
+library(Metrics)       # for RMSE
+library(Hmisc)         # for bootstrapped confidence intervals
+library(zeallot)       # for unpacking lists
+library(scales)        # hue palette
+library(showtext)      # for fonts
+library(broom.mixed)   # for augmenting fitted models
+library(ggtext)        # for text formatting in ggplot
+library(ggrepel)       # avoid overlap in geom_text
+library(patchwork)     # for multiple plots
+library(ggh4x)         # for facet_wrap2 with axes on all panels
+library(tidyverse)     # for everything else
+
+
+knitr::opts_chunk$set(echo = T, warning = F, message = F)
+
+# set defaults
+theme_set(theme_classic() + 
+            theme(text = element_text(size = 14))) 
+options(dplyr.summarise.inform = F)
+options(xtable.floating = F)
+options(xtable.timestamp = "")
+options(readr.show_col_types = F)
+
+data_dir = '../data/'
+figures_dir = '../figures/'
+
+set.seed(1)
+```
+
+# Helper functions
+
+```{r}
+feature_types = c('generic', 'demographics', 'dispositions', 'actions')
+feature_type_colors = c("generic" = "gray50",
+                        "demographics" = "#88CCEE",
+                        "dispositions" = "#EE8866",
+                        "actions" = "#DDCC77")
+features = read_csv(str_c(data_dir, 'features_mapping.csv')) %>%
+  mutate(feature_key = factor(feature_key),
+         feature_type = factor(feature_type, levels = feature_types))
+
+conditions = c("relevance", "controllability", "normality",
+               "undo", "same", "different", "endorse")
+
+condition_labels = c(
+  "relevance" = "relevance",
+  "controllability" = "controllability",
+  "normality" = "normality",
+  "undo" = "What could be changed <br> &emsp;&emsp;&ensp;to <b>undo</b> the outcome?",
+  "same" = "What would be the <b>same</b> <br> in a reasonable person?",
+  "different" = "What would be <b>different</b> <br> in a reasonable person?",
+  "endorse" = "What subjective standard <br> would you <b>endorse</b>?"
+)
+
+condition_titles = c(
+  "relevance" = "<b>relevance</b>",
+  "controllability" = "<b>controllability</b>",
+  "normality" = "<b>normality</b>",
+  "undo" = "<b>undo</b> the<br>outcome",
+  "same" = "<b>same</b> as<br>reasonable",
+  "different" = "<b>different</b> from<br>reasonable",
+  "endorse" = "<b>endorsed</b><br>standard"
+)
+
+attention.key = read_csv(str_c(data_dir, 'attention_key.csv'))
+```
+
+## Rounding
+```{r include = F}
+# round percentages ensuring they sum to 100% using largest remainder method
+round_percent = function(x) {
+  pct = x * 100
+  floored = floor(pct)
+  remainder = pct - floored
+  shortfall = 100 - sum(floored)
+  idx = order(remainder, decreasing = TRUE)[seq_len(shortfall)]
+  floored[idx] = floored[idx] + 1
+  paste0(floored, "%")
+}
+```
+
+## Demographics
+```{r include = F}
+print_demographics = function(data) {
+  # gender
+  data %>%
+    group_by(gender) %>%
+    summarise(n = n()) %>%
+    print()
+  
+  # age
+  print('age:')
+  mean(data$age, na.rm = T) %>% print()
+  sd(data$age, na.rm = T) %>% print()
+  
+  # race
+  data %>%
+    group_by(race) %>%
+    summarise(n = n()) %>%
+    print()
+
+  # time taken
+  print('time taken (min):')
+  print(mean(data$time, na.rm = T)/60)
+  print(sd(data$time, na.rm = T)/60)
+}
+```
+
+## Process data
+```{r}
+get_tense = function(condition) {
+  feature_tense = case_when(
+    condition == 'controllability' ~ 'gerund',
+    condition %in% c('normality', 'relevance', 'undo') ~ 'present',
+    condition %in% c('same', 'different') ~ 'past',
+    condition == 'endorse' ~ 'person'
+    )
+  return(feature_tense)
+}
+
+process_data = function(condition, data_dir, shift = 0) {
+  # import raw data
+  data = read_csv(str_c(data_dir, condition, '/trials.csv'))
+  data.participants = read_csv(str_c(data_dir, condition, '/participants.csv'))
+  print(str_c('Recruited n = ', length(unique(data$id))))
+
+  # filter attention checks
+  excluded_ids = data %>%
+    distinct(id, story, attention) %>%
+    left_join(attention.key, by = 'story') %>%
+    mutate(attention_correct = (attention == key)) %>%
+    group_by(id) %>%
+    summarise(correct = sum(attention_correct)) %>%
+    filter(correct < 9) %>%
+    .$id
+  
+  # process trial data
+  data = data %>%
+    filter(!(id %in% excluded_ids)) %>%
+    select(-attention, -story_order, -feature_order) %>%
+    left_join(features %>%
+                select(feature_key,
+                       feature = !!str_c('feature_', get_tense(condition)),
+                       feature_type),
+              by = 'feature') %>%
+    select(-feature) %>%
+    mutate(feature_type = factor(feature_type,
+                                 levels = feature_types,
+                                 ordered = T),
+           id = as.integer(factor(id)) + shift,
+           condition = condition)
+  print(str_c('Included n = ', length(unique(data$id))))
+  
+  # process participant data
+  data.participants = data.participants %>%
+    filter(!(id %in% excluded_ids)) %>%
+    mutate(id = as.integer(factor(id)) + shift)
+
+  return(list(data, data.participants))
+}
+```
+
+
+# Experiment 1
+
+## Data
+
+### Relevance
+```{r}
+c(data.rel, data.rel.participants) %<-%
+  process_data('relevance', str_c(data_dir, 'experiment1/'))
+
+data.rel.participants %>%
+  select(id, feedback) %>%
+  datatable(rownames = F)
+```
+
+### Controllability
+```{r}
+c(data.ctrl, data.ctrl.participants) %<-%
+  process_data('controllability', str_c(data_dir, 'experiment1/'), 50)
+
+data.ctrl.participants %>%
+  select(id, feedback) %>%
+  datatable(rownames = F)
+```
+
+### Normality
+```{r}
+c(data.norm, data.norm.participants) %<-%
+  process_data('normality', str_c(data_dir, 'experiment1/'), 100)
+
+data.norm.participants %>%
+  select(id, feedback) %>%
+  datatable(rownames = F)
+```
+
+## Demographics
+```{r}
+print_demographics(data.ctrl.participants %>%
+                     rbind(data.norm.participants) %>%
+                     rbind(data.rel.participants))
+```
+
+## Analysis
+
+### Marginal means
+
+```{r}
+# combine predictor data with factors
+predictor_data = data.rel %>%
+  rbind(data.ctrl) %>%
+  rbind(data.norm) %>%
+  mutate(condition = factor(condition, levels = conditions),
+         id = factor(id))
+
+# mixed effects model
+predictor_model = lmer(response ~ condition * feature_type + (1 + feature_type | id),
+                       data = predictor_data)
+
+# estimate marginal means with CIs
+predictor_emm = emmeans(predictor_model, ~ condition | feature_type)
+predictor_summary_emm = as.data.frame(predictor_emm) %>%
+  rename(y = emmean, ymin = asymp.LCL, ymax = asymp.UCL) %>%
+  select(condition, feature_type, y, ymin, ymax)
+
+predictor_summary_emm %>%
+  mutate(
+    condition = factor(condition, levels = conditions),
+    CI = sprintf("[%.2f, %.2f]", ymin, ymax),
+    mean = round(y, 2)
+  ) %>%
+  arrange(condition, feature_type) %>%
+  select(condition, feature_type, mean, CI)
+```
+
+### Pairwise differences
+
+```{r}
+predictor_emm_by_condition = emmeans(predictor_model, ~ feature_type | condition)
+predictor_contrasts = pairs(predictor_emm_by_condition, adjust = "bonferroni")
+summary(predictor_contrasts)
+```
+
+## Figures
+
+```{r fig.width = 5, fig.height = 3}
+ggplot(data = predictor_summary_emm,
+       aes(x = feature_type,
+           y = y,
+           color = feature_type)) +
+  geom_linerange(aes(ymin = ymin, ymax = ymax,
+                     color = feature_type),
+                 linewidth = 0.8,
+                 show.legend = F) +
+  geom_point(size = 3) +
+  facet_wrap(~ condition, scales = 'free_y',
+             labeller = as_labeller(condition_labels),
+             strip.position = "bottom") +
+  scale_y_continuous(name = "rating",
+                     limits = c(1, 7),
+                     breaks = 1:7,
+                     labels = c("1", "", "", "4", "", "", "7")) +
+  scale_color_manual(values = feature_type_colors) +
+  theme(text = element_text(size = 12),
+        legend.position = 'inside',
+        legend.position.inside = c(0.5, -0.18),
+        legend.direction = "horizontal",
+        legend.title = element_blank(),
+        legend.text = element_text(
+          size = 12, margin = margin(0)),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(size = 12),
+        strip.background = element_blank(),
+        strip.placement = "outside",
+        strip.text = element_text(
+          size = 12, face = 'bold',
+          margin = margin(t = 0, b = 0.1, unit = "cm")),
+        panel.grid.major.y = element_line(),
+        plot.margin = margin(t = 0.1, b = 0.8, unit = "cm"))
+
+# ggsave(str_c(figures_dir, 'exp1.pdf'),
+#        width = 5, height = 3)
+```
+
+
+# Experiment 2
+
+## Data
+
+### Undo
+```{r}
+c(data.undo, data.undo.participants) %<-%
+  process_data('undo', str_c(data_dir, 'experiment2/'))
+
+data.undo.participants %>%
+  select(id, feedback) %>%
+  datatable(rownames = F)
+```
+
+### Same
+```{r}
+c(data.same, data.same.participants) %<-%
+  process_data('same', str_c(data_dir, 'experiment2/'), 50)
+
+data.same.participants %>%
+  select(id, feedback) %>%
+  datatable(rownames = F)
+```
+
+### Different
+```{r}
+c(data.diff, data.diff.participants) %<-%
+  process_data('different', str_c(data_dir, 'experiment2/'), 100)
+
+data.diff.participants %>%
+  select(id, feedback) %>%
+  datatable(rownames = F)
+```
+
+### Endorse
+```{r}
+c(data.endorse, data.endorse.participants) %<-%
+  process_data('endorse', str_c(data_dir, 'experiment2/'), 150)
+
+data.endorse.participants %>%
+  select(id, feedback) %>%
+  datatable(rownames = F)
+```
+
+## Demographics
+```{r}
+print_demographics(data.undo.participants %>%
+                     rbind(data.same.participants) %>%
+                     rbind(data.diff.participants) %>%
+                     rbind(data.endorse.participants))
+```
+
+## Analysis
+
+### Descriptive statistics
+
+Selection rates (undo, same, different):
+```{r}
+data.selection_total = bind_rows(data.undo, data.same, data.diff) %>%
+  mutate(condition = factor(condition, levels = conditions)) %>%
+  group_by(condition) %>%
+  summarise(prop_selected = mean(response))
+
+data.selection_total
+```
+
+Selection distribution by feature type:
+```{r}
+data.selection_prop = bind_rows(data.undo, data.same, data.diff) %>%
+  mutate(condition = factor(condition, levels = conditions)) %>%
+  group_by(condition, feature_type) %>%
+  summarise(n_selected = sum(response),
+            n = n(),
+            .groups = 'drop') %>%
+  group_by(condition) %>%
+  mutate(prop = n_selected / sum(n_selected))
+data.selection_prop
+```
+
+Pairwise correlations:
+```{r}
+selection_rates = bind_rows(data.undo, data.same, data.diff) %>%
+  group_by(condition, story, feature_key) %>%
+  summarise(selection_rate = mean(response),
+            .groups = 'drop') %>%
+  pivot_wider(names_from = condition,
+              values_from = selection_rate)
+
+# undo vs. same
+round(cor(selection_rates$undo, selection_rates$same, use = "complete.obs"), 3)
+
+# undo vs. different
+round(cor(selection_rates$undo, selection_rates$different, use = "complete.obs"), 3)
+
+# same vs. different
+round(cor(selection_rates$same, selection_rates$different, use = "complete.obs"), 3)
+```
+
+Agreement ratings (endorse):
+```{r}
+data.endorse %>%
+  group_by(feature_type) %>%
+  summarise(
+    mean = mean(response),
+    sd = sd(response),
+    ci_low = mean_cl_boot(response)$ymin,
+    ci_high = mean_cl_boot(response)$ymax,
+    n = n()
+  )
+```
+
+### Models
+
+```{r}
+data.modeling = bind_rows(data.undo, data.same, data.diff, data.endorse) %>%
+  left_join(data.ctrl %>%
+              group_by(story, feature_key) %>%
+              summarise(controllability = mean(response)) %>%
+              left_join(data.norm %>%
+                          group_by(story, feature_key) %>%
+                          summarise(normality = mean(response)),
+                        by = c('story', 'feature_key')) %>%
+              left_join(data.rel %>%
+                          group_by(story, feature_key) %>%
+                          summarise(relevance = mean(response)),
+                        by = c('story', 'feature_key')),
+            by = c('story', 'feature_key')) %>%
+  mutate(story = factor(story),
+         id = factor(id))
+```
+
+#### Fitting models
+
+```{r}
+fit.undo = brm(
+  formula = response ~ 1 + relevance + controllability + normality +
+    (1 + relevance + controllability + normality | id) + (1 | story),
+  data = data.modeling %>% filter(condition == 'undo'),
+  family = bernoulli(link = "logit"),
+  iter = 2000,
+  seed = 1,
+  file = "cache/fit.undo"
+)
+
+fit.same = brm(
+  formula = response ~ 1 + relevance + controllability + normality +
+    (1 + relevance + controllability + normality | id) + (1 | story),
+  data = data.modeling %>% filter(condition == 'same'),
+  family = bernoulli(link = "logit"),
+  iter = 2000,
+  seed = 1,
+  file = "cache/fit.same"
+)
+
+fit.diff = brm(
+  formula = response ~ 1 + relevance + controllability + normality +
+    (1 + relevance + controllability + normality | id) + (1 | story),
+  data = data.modeling %>% filter(condition == 'different'),
+  family = bernoulli(link = "logit"),
+  iter = 2000,
+  seed = 1,
+  file = "cache/fit.diff"
+)
+
+fit.endorse = brm(
+  formula = response ~ 1 + relevance + controllability + normality +
+    (1 + relevance + controllability + normality | id) + (1 | story),
+  data = data.modeling %>% filter(condition == 'endorse') %>% drop_na(),
+  iter = 2000,
+  seed = 1,
+  file = "cache/fit.endorse"
+)
+```
+
+#### Model coefficients
+
+```{r}
+# extract fixed effects and convert to odds ratios
+extract_or = function(fit, condition) {
+  summary(fit)$fixed[-1, c("Estimate", "l-95% CI", "u-95% CI")] %>%
+    rownames_to_column("predictor") %>%
+    mutate(across(c(Estimate, `l-95% CI`, `u-95% CI`), exp),
+           condition = condition)
+}
+undo_CI_95 = extract_or(fit.undo, "undo")
+same_CI_95 = extract_or(fit.same, "same")
+diff_CI_95 = extract_or(fit.diff, "different")
+
+endorse_CI_95 = summary(fit.endorse)$fixed[-1, c("Estimate", "l-95% CI", "u-95% CI")] %>%
+  rownames_to_column("predictor") %>%
+  mutate(condition = "endorse")
+
+CI_95_all = undo_CI_95 %>%
+  rbind(same_CI_95) %>%
+  rbind(diff_CI_95) %>%
+  rbind(endorse_CI_95) %>%
+  rename(mean = Estimate, l95 = `l-95% CI`, u95 = `u-95% CI`) %>%
+  mutate(across(c(mean, l95, u95), ~ round(.x, 2)),
+         condition = factor(condition, levels = conditions),
+         predictor = factor(predictor, levels = conditions))
+
+CI_95_all
+```
+
+#### Model predictions
+```{r}
+get_binary_pred_actual = function(fit, condition_name) {
+  pred = fitted(fit, summary = TRUE)[, "Estimate"]
+  data = data.modeling %>%
+    filter(condition == condition_name) %>%
+    mutate(predicted = pred) %>%
+    group_by(story, feature_key) %>%
+    summarise(predicted = mean(predicted),
+              actual = mean(response),
+              .groups = 'drop') %>%
+    mutate(condition = condition_name)
+  return(data)
+}
+
+get_continuous_pred_actual = function(fit, condition_name) {
+  pred = fitted(fit, summary = TRUE)[, "Estimate"]
+  data = data.modeling %>%
+    filter(condition == condition_name) %>%
+    drop_na() %>%
+    mutate(predicted = pred) %>%
+    group_by(story, feature_key) %>%
+    summarise(predicted = mean(predicted),
+              actual = mean(response),
+              .groups = 'drop') %>%
+    mutate(condition = condition_name)
+  return(data)
+}
+
+model_predictions = bind_rows(
+  get_binary_pred_actual(fit.undo, "undo"),
+  get_binary_pred_actual(fit.same, "same"),
+  get_binary_pred_actual(fit.diff, "different"),
+  get_continuous_pred_actual(fit.endorse, "endorse")
+) %>%
+  mutate(condition = factor(condition, levels = conditions))
+
+# Calculate R-squared for each condition
+model_metrics = model_predictions %>%
+  group_by(condition) %>%
+  summarise(r = cor(predicted, actual),
+            rmse = sqrt(mean((predicted - actual)^2)),
+            .groups = 'drop') %>%
+  mutate(label = sprintf("RMSE = %.2f\nR = %.2f", rmse, r))
+```
+
+
+## Figures
+
+### Example (Nadia)
+
+Aesthetics:
+```{r fig.width = 11, fig.height = 5}
+nadia_ft_map = data.undo %>%
+  rbind(data.endorse) %>%
+  filter(story == 'Nadia') %>%
+  distinct(feature_key, feature_type) %>%
+  mutate(color = feature_type_colors[as.numeric(feature_type)])
+
+nadia_ft_colors = setNames(nadia_ft_map$color, nadia_ft_map$feature_key)
+
+nadia_labels_plain = c(
+  'generic' = '(generic)',
+  'female' = 'female',
+  'white' = 'White',
+  '34 years old' = '34 years old',
+  'red hair' = 'red hair',
+  'software engineer' = 'software engineer',
+  'timid person' = 'timid',
+  'organized person' = 'organized',
+  'enjoy oil painting' = 'enjoys oil painting',
+  'collect vinyl records' = 'collects vinyl records',
+  'attend couples therapy years ago' = 'attended couples therapy',
+  'go to emergency room for bruises' = 'went to ER for bruises prior',
+  'not seek help after emergency room incident' = 'did not seek help after ER incident',
+  'scared when franklin screamed' = 'got scared when Franklin screamed',
+  'grab revolver' = 'grabbed revolver',
+  'shoot franklin with revolver' = 'shot Franklin with revolver')
+
+# colored labels using element_markdown
+nadia_labels = setNames(
+  paste0('<span style="color:',
+         nadia_ft_colors[names(nadia_labels_plain)],
+         '">**', nadia_labels_plain, '**</span>'),
+  names(nadia_labels_plain))
+
+nadia_levels = rev(names(nadia_labels))
+```
+
+Helper functions:
+```{r}
+# shared theme for individual condition panels
+nadia_theme = theme(
+  text = element_text(size = 12),
+  plot.title = element_markdown(size = 12, hjust = 0.5),
+  legend.position = "none",
+  axis.title.y = element_blank(),
+  axis.text.y = element_blank(),
+  axis.ticks.y = element_blank(),
+  axis.text.x = element_text(size = 12),
+  panel.grid.major = element_line(linewidth = 0.3, color = "grey90"),
+  plot.margin = margin(0))
+
+# for relevance, controllability, and normality
+nadia_pred_panel = function(data, cond) {
+  d = data %>%
+    filter(story == 'Nadia', condition == cond) %>%
+    group_by(feature_key) %>%
+    summarise(mean = mean(response),
+              ci_low = mean_cl_boot(response)$ymin,
+              ci_high = mean_cl_boot(response)$ymax,
+              .groups = 'drop') %>%
+    mutate(feature_key = factor(feature_key, levels = nadia_levels))
+
+  ggplot(d, aes(x = mean, y = feature_key,
+                color = feature_key)) +
+    geom_pointrange(aes(xmin = ci_low, xmax = ci_high),
+                    size = 0.3, linewidth = 0.7) +
+    scale_x_continuous(name = "rating", limits = c(0.5, 7.5),
+                       breaks = c(1, 4, 7)) +
+    scale_y_discrete(limits = nadia_levels,
+                     labels = nadia_labels,
+                     drop = FALSE) +
+    scale_color_manual(values = nadia_ft_colors) +
+    ggtitle(condition_titles[cond]) +
+    nadia_theme
+}
+
+# for undo, same, and different
+nadia_sel_panel = function(data, cond) {
+  d = data %>%
+    filter(story == 'Nadia', condition == cond) %>%
+    group_by(feature_key) %>%
+    summarise(mean = mean(response),
+              ci_low = mean_cl_boot(response)$ymin,
+              ci_high = mean_cl_boot(response)$ymax,
+              .groups = 'drop') %>%
+    mutate(feature_key = factor(feature_key, levels = nadia_levels))
+
+  ggplot(d, aes(x = mean,
+                y = feature_key,
+                fill = feature_key,
+                color = feature_key)) +
+    geom_col(alpha = 0.5, width = 0.7) +
+    geom_linerange(aes(xmin = ci_low, xmax = ci_high),
+                   linewidth = 0.7) +
+    scale_x_continuous(name = "selection",
+                       limits = c(-0.1, 1.1),
+                       breaks = c(0, 0.5, 1),
+                       labels = c(0, 0.5, 1)) +
+    scale_y_discrete(limits = nadia_levels,
+                     labels = nadia_labels,
+                     drop = FALSE) +
+    scale_fill_manual(values = nadia_ft_colors) +
+    scale_color_manual(values = nadia_ft_colors) +
+    ggtitle(condition_titles[cond]) +
+    nadia_theme
+}
+```
+
+```{r fig.width = 11, fig.height = 5}
+legend_data = tibble(
+  feature_type = factor(feature_types[2:4], levels = feature_types[2:4]),
+  x = 1, y = 3:1
+)
+
+p_legend = ggplot(legend_data,
+                  aes(x = x, y = y,
+                      color = feature_type)) +
+  geom_point(size = 2) +
+  geom_text(aes(label = feature_type),
+            hjust = 0,
+            nudge_x = 0.15,
+            size = 4) +
+  scale_color_manual(values = feature_type_colors) +
+  scale_x_continuous(limits = c(0.9, 2.5)) +
+  scale_y_continuous(limits = c(0.5, 3.5)) +
+  theme_void() +
+  theme(legend.position = "none")
+
+p1 = nadia_pred_panel(data.rel, "relevance") +
+  theme(axis.text.y = element_markdown(size = 12)) +
+  inset_element(p_legend, left = -2.7, bottom = 0.85, right = -1, top = 1)
+p2 = nadia_pred_panel(data.ctrl, "controllability")
+p3 = nadia_pred_panel(data.norm, "normality")
+
+p4 = nadia_sel_panel(data.undo, "undo")
+p5 = nadia_sel_panel(data.same, "same")
+p6 = nadia_sel_panel(data.diff, "different")
+
+p7 = ggplot(data.endorse %>%
+              filter(story == 'Nadia') %>%
+              group_by(feature_key) %>%
+              summarise(mean = mean(response),
+                        ci_low = mean_cl_boot(response)$ymin,
+                        ci_high = mean_cl_boot(response)$ymax,
+                        .groups = 'drop') %>%
+              mutate(feature_key = factor(feature_key, levels = nadia_levels)),
+       aes(x = mean, y = feature_key,
+           color = feature_key)) +
+  geom_pointrange(aes(xmin = ci_low, xmax = ci_high),
+                  size = 0.3, linewidth = 0.7) +
+  scale_x_continuous(name = "agreement",
+                     limits = c(-10, 110),
+                     breaks = c(0, 50, 100)) +
+  scale_y_discrete(limits = nadia_levels,
+                   labels = nadia_labels,
+                   drop = FALSE) +
+  scale_color_manual(values = nadia_ft_colors) +
+  ggtitle(condition_titles["endorse"]) +
+  nadia_theme
+
+p1 + p2 + p3 + p4 + p5 + p6 + p7 +
+  plot_layout(nrow = 1, widths = rep(1, 7))
+
+# ggsave(str_c(figures_dir, "example_nadia.pdf"),
+#        width = 11, height = 5)
+```
+
+### Aggregate results
+
+#### Selection barplots
+
+For undo, same, and different conditions only.
+```{r}
+all_colors = c(feature_type_colors,
+               'selected' = 'gray75',
+               'not selected' = 'gray95')
+
+bar_height = 0.3  # half-height of each bar
+```
+
+Top bars: selected (dark gray) vs not selected (light gray)
+```{r}
+data.top_bar = data.selection_total %>%
+  rowwise() %>%
+  reframe(condition = condition,
+          category = c("selected", "not selected"),
+          prop = c(prop_selected, 1 - prop_selected)) %>%
+  mutate(condition = factor(condition, levels = conditions),
+         ypos = 2) %>%
+  arrange(condition, desc(category == "selected")) %>%
+  group_by(condition) %>%
+  mutate(xmax = cumsum(prop),
+         xmin = xmax - prop,
+         xmid = (xmin + xmax) / 2) %>%
+  ungroup()
+
+top_bar_labels = tibble(
+  condition = factor(c("undo", "undo",
+                       "same", "same",
+                       "different", "different"),
+                     levels = conditions),
+  label = c("CHANGED", "NOT CHANGED",
+            "SAME", "NOT THE SAME",
+            "DIFFERENT", "NOT DIFFERENT"),
+  x = c(0, 1, 0, 1, 0, 1),
+  hjust = c(0, 1, 0, 1, 0, 1),
+  label_color = rep(c("gray50", "gray75"), 3)
+)
+```
+
+Bottom bars: feature type breakdown
+```{r}
+data.bottom_bar = data.selection_prop %>%
+  mutate(category = as.character(feature_type),
+         ypos = 1) %>%
+  arrange(condition, feature_type) %>%
+  group_by(condition) %>%
+  mutate(xmax = cumsum(prop),
+         xmin = xmax - prop,
+         xmid = (xmin + xmax) / 2,
+         pct_label = round_percent(prop)) %>%
+  ungroup()
+
+bottom_bar_labels = data.selection_prop %>%
+  filter(condition == "same") %>%
+  ungroup() %>%
+  arrange(feature_type) %>%
+  mutate(xlabel = c(0.1, 0.63, 1.05),
+         label_color = feature_type_colors[as.character(feature_type)])
+```
+
+Zoom lines:
+```{r}
+# left edge (0, top) to (0, bottom)
+# right edge (selected, top) to (1, bottom)
+data.zoom = data.selection_total %>%
+  transmute(condition,
+            x_right = prop_selected,
+            x_left = 0)
+```
+
+Generating plot:
+```{r}
+p_selections = ggplot() +
+  # top bars
+  geom_rect(data = data.top_bar,
+            aes(xmin = xmin,
+                xmax = xmax,
+                ymin = ypos - bar_height,
+                ymax = ypos + bar_height,
+                fill = category),
+            color = "gray70", 
+            linewidth = 0.4) +
+  geom_text_repel(data = data.top_bar,
+                  aes(x = xmid,
+                      y = ypos,
+                      label = percent(prop, accuracy = 1)),
+                  direction = "x",
+                  point.size = NA,
+                  box.padding = 0.1,
+                  size = 3.5,
+                  color = "black") +
+  # bottom bars
+  geom_rect(data = data.bottom_bar,
+            aes(xmin = xmin,
+                xmax = xmax,
+                ymin = ypos - bar_height,
+                ymax = ypos + bar_height,
+                fill = category),
+            color = "gray70",
+            linewidth = 0.4) +
+  geom_text_repel(data = data.bottom_bar,
+                  aes(x = xmid,
+                      y = ypos,
+                      label = pct_label),
+                  direction = "x",
+                  point.size = NA,
+                  box.padding = 0.1,
+                  size = 3.5) +
+  # zoom lines
+  geom_segment(data = data.zoom,
+               aes(x = x_left,
+                   xend = x_left,
+                   y = 2 - bar_height,
+                   yend = 1 + bar_height),
+               color = "gray70",
+               linewidth = 0.4) +
+  geom_segment(data = data.zoom,
+               aes(x = x_right,
+                   xend = 1,
+                   y = 2 - bar_height,
+                   yend = 1 + bar_height),
+               color = "gray70",
+               linewidth = 0.4) +
+  # top bar labels
+  geom_text(data = top_bar_labels,
+            aes(x = x,
+                y = 2 + bar_height + 0.08,
+                label = label,
+                hjust = hjust,
+                color = label_color),
+            vjust = 0,
+            size = 3,
+            fontface = "bold") +
+  # bottom bar labels
+  geom_text(data = bottom_bar_labels,
+            aes(x = xlabel,
+                y = 0.45,
+                label = toupper(feature_type),
+                color = label_color),
+            fontface = "bold",
+            size = 3) +
+  # formatting
+  facet_wrap(~ condition, nrow = 1,
+             labeller = as_labeller(condition_labels)) +
+  scale_fill_manual(values = all_colors) +
+  scale_color_identity() +
+  scale_y_continuous(limits = c(0.3, 2.7)) +
+  coord_cartesian(clip = "off") +
+  theme(legend.position = "none",
+        strip.background = element_blank(),
+        strip.text = element_markdown(
+          size = 12,
+          margin = margin(t = 0, b = 0.1, unit = "cm")),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.line = element_blank(),
+        plot.margin = margin(0, 0, 0, 0),
+        panel.spacing = unit(1, "lines"))
+```
+
+#### Endorse density plot
+```{r}
+data.endorse.summary = as.data.frame(
+  emmeans(lmer(response ~ feature_type + (1 | id),
+               data = data.endorse),
+          ~ feature_type)) %>%
+  rename(mean = emmean,
+         ci_low = asymp.LCL,
+         ci_high = asymp.UCL) %>%
+  select(feature_type, mean, ci_low, ci_high)
+
+p_endorse = ggplot(data.endorse,
+                   aes(x = feature_type,
+                       y = response)) +
+  geom_violin(aes(fill = feature_type),
+              color = NA,
+              alpha = 0.3) +
+  geom_pointrange(data = data.endorse.summary,
+                  aes(y = mean,
+                      ymin = ci_low,
+                      ymax = ci_high,
+                      color = feature_type),
+                  size = 0.2,
+                  linewidth = 0.7) +
+  facet_wrap(~ "endorse",
+             labeller = as_labeller(condition_labels)) +
+  scale_fill_manual(values = feature_type_colors) +
+  scale_color_manual(values = feature_type_colors) +
+  scale_x_discrete(labels = c(
+    "generic" = "generic",
+    "demographics" = "demogr.",
+    "dispositions" = "dispos.")) +
+  scale_y_continuous(limits = c(0, 110),
+                     breaks = c(0, 50, 100)) +
+  coord_cartesian(ylim = c(0, 110)) +
+  theme(legend.position = "none",
+        strip.background = element_blank(),
+        strip.text = element_markdown(
+          size = 12,
+          margin = margin(t = 0, b = 0.1, unit = "cm")),
+        axis.title = element_blank(),
+        axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 10),
+        plot.margin = margin(0, 0, 0, 0.5, unit = "lines"))
+```
+
+#### Coefficient plots
+
+Odds ratios (for undo, same, and different):
+```{r}
+p_odds = ggplot(CI_95_all %>%
+                  filter(condition != "endorse"),
+                aes(x = predictor,
+                    y = mean)) +
+  geom_hline(yintercept = 1,
+             linetype = "dashed",
+             color = "grey50") +
+  geom_pointrange(aes(ymin = l95, ymax = u95),
+                  size = 0.3,
+                  linewidth = 0.7,
+                  color = 'gray30') +
+  coord_flip(clip = "off") +
+  facet_wrap(~ condition, nrow = 1,
+             labeller = as_labeller(condition_labels)) +
+  scale_y_continuous(name = "odds ratio",
+                     limits = c(-0.5, 5.25),
+                     breaks = seq(0, 5)) +
+  theme(element_text(size = 12),
+        legend.position = "none",
+        strip.background = element_blank(),
+        strip.text = element_blank(),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text = element_text(
+          size = 12, color = "black"),
+        panel.border = element_rect(
+          color = "black", fill = NA, linewidth = 0.4),
+        panel.grid.major.x = element_line(),
+        panel.grid.major.y = element_line(),
+        panel.spacing = unit(1, "lines"),
+        plot.margin = margin(0.3, 0, 0, 0, unit = "cm"))
+```
+
+Coefficients (for endorse):
+```{r}
+p_coeff = ggplot(CI_95_all %>%
+                   filter(condition == "endorse"),
+                 aes(x = predictor,
+                     y = mean)) +
+  geom_hline(yintercept = 0,
+             linetype = "dashed",
+             color = "grey50") +
+  geom_pointrange(aes(ymin = l95, ymax = u95),
+                  size = 0.3,
+                  linewidth = 0.7,
+                  color = 'gray30') +
+  coord_flip(clip = "off") +
+  facet_wrap(~ condition, nrow = 1,
+             labeller = as_labeller(condition_labels)) +
+  scale_y_continuous(name = "coefficient",
+                     limits = c(-2, 12.5),
+                     breaks = c(0, 3, 6, 9, 12)) +
+  theme(element_text(size = 12),
+        legend.position = "none",
+        strip.background = element_blank(),
+        strip.text = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.x = element_text(
+          size = 12, color = "black"),
+        panel.border = element_rect(
+          color = "black", fill = NA, linewidth = 0.4),
+        panel.grid.major.x = element_line(),
+        panel.grid.major.y = element_line(),
+        panel.spacing = unit(1, "lines"),
+        plot.margin = margin(0.3, 0, 0, 1, unit = "lines"))
+```
+
+#### Model scatterplots
+
+Undo, same, and different conditions:
+```{r}
+p_scatter_left = ggplot(model_predictions %>%
+                          filter(condition != "endorse"),
+                        aes(x = predicted,
+                            y = actual)) +
+  geom_abline(slope = 1,
+              intercept = 0,
+              linetype = "dashed",
+              color = "grey50") +
+  geom_point(alpha = 0.5, size = 1.5) +
+  geom_text(data = model_metrics %>%
+              filter(condition != "endorse"),
+            aes(x = 0, y = 1.05, label = label),
+            hjust = 0, vjust = 1,
+            size = 3.5, lineheight = 0.9) +
+  facet_wrap2(~ condition, nrow = 1,
+              axes = "y", remove_labels = "x") +
+  scale_x_continuous(name = "predicted selection",
+                     breaks = c(0, 0.5, 1)) +
+  scale_y_continuous(name = "selection",
+                     breaks = c(0, 0.5, 1)) +
+  coord_fixed(ratio = 1,
+              xlim = c(0, 1),
+              ylim = c(0, 1),
+              clip = "off") +
+  theme(text = element_text(size = 12),
+        strip.background = element_blank(),
+        strip.text = element_blank(),
+        plot.margin = margin(0.3, 0, 0, 0, unit = "cm"),
+        panel.spacing = unit(1, "lines"))
+```
+
+Endorse condition:
+```{r}
+p_scatter_right = ggplot(model_predictions %>%
+                           filter(condition == "endorse"),
+                         aes(x = predicted,
+                             y = actual)) +
+  geom_abline(slope = 1,
+              intercept = 0,
+              linetype = "dashed",
+              color = "grey50") +
+  geom_point(alpha = 0.5, size = 1.5) +
+  geom_text(data = model_metrics %>%
+              filter(condition == "endorse"),
+            aes(x = 0, y = 105, label = label),
+            hjust = 0, vjust = 1,
+            size = 3.5, lineheight = 0.9) +
+  facet_wrap(~ condition, nrow = 1) +
+  scale_x_continuous(name = "predicted agreement",
+                     breaks = c(0, 50, 100)) +
+  scale_y_continuous(name = "agreement",
+                     breaks = c(0, 50, 100)) +
+  coord_fixed(ratio = 1,
+              xlim = c(0, 100),
+              ylim = c(0, 100),
+              clip = "off") +
+  theme(text = element_text(size = 12),
+        strip.background = element_blank(),
+        strip.text = element_blank(),
+        panel.spacing = unit(1, "lines"),
+        plot.margin = margin(0.3, 0, 0, 1, unit = "lines"))
+```
+
+#### Combining plots
+```{r fig.height = 6, fig.width = 11}
+(p_selections + (p_endorse / plot_spacer() + plot_layout(heights = c(20, 1))) +
+  plot_layout(nrow = 1, widths = c(3.5, 1))) /
+  (p_odds + p_coeff +
+    plot_layout(nrow = 1, widths = c(3, 1))) /
+  (p_scatter_left + p_scatter_right +
+    plot_layout(nrow = 1, widths = c(3.5, 1))) +
+  plot_layout(heights = c(1.25, 1, 2.5))
+
+# ggsave(str_c(figures_dir, "exp2.pdf"),
+#        width = 11, height = 6)
+```
+
+# Session info
+```{r}
+sessionInfo()
+```
+

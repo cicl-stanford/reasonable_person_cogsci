@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title> Psychology Experiment </title>
+
+    <!-- CSS -->
+    <link href='css/jspsych.css' rel='stylesheet' type='text/css'></link>
+    <link href='css/plugin-normality.css' rel='stylesheet' type='text/css'></link>
+
+    <!-- JS libraries -->
+    <script src='js/jquery.min.js'></script>
+    <script src='js/jquery-ui.min.js'></script>
+    <script src='js/timeme.min.js'></script>
+
+    <!-- jsPsych -->
+    <script src='js/jspsych.js'></script>
+    <script src='js/plugin-preload.js'></script>
+    <script src='js/plugin-html-button-response.js'></script>
+    <script src='js/plugin-survey-html-form.js'></script>
+    <script src='js/plugin-survey-text.js'></script>
+    <script src='js/plugin-pipe.min.js'></script>
+
+    <!-- My plugins/pages -->
+    <script src="js/plugin-story.js"></script>
+    <script src="js/plugin-normality.js"></script>
+
+    <script src='js/intro.js'></script>
+    <script src='js/feedback-demographics.js'></script>
+    <script src='js/trial_info.js'></script>
+
+</head>
+
+<body></body>
+<script>
+
+    TimeMe.initialize({
+        currentPageName: 'page',
+        idleTimeoutInSeconds: 15
+    });
+
+    // -----------------------------------------------------
+    // initialize jspsych
+    // -----------------------------------------------------
+    var jsPsych = initJsPsych({
+        show_progress_bar: true,
+        auto_update_progress_bar: false,
+        on_finish: () => {
+            $('#jspsych-content').html('<div style="margin: auto;"> <p> Thank you for' +
+                ' participating in this experiment! </p> </div>');
+            setTimeout(function () {}, 500);
+        }
+    });
+
+    // -----------------------------------------------------
+    // progress bar helper
+    // -----------------------------------------------------
+    const progressIncrement = 1 / 35;
+
+    function updateProgress() {
+        var prog = jsPsych.getProgressBarCompleted();
+        jsPsych.setProgressBar(prog + progressIncrement);
+    }
+
+    // -----------------------------------------------------
+    // preload
+    // -----------------------------------------------------
+    let preload_trial = {
+        type: jsPsychPreload,
+        images: trial_info.map(t => t.image)
+    };
+
+    // -----------------------------------------------------
+    // trials
+    // -----------------------------------------------------
+    const trials = {
+        timeline_variables: trial_info,
+        timeline: [
+            {
+                type: jsPsychStory,
+                name: jsPsych.timelineVariable('name'),
+                image: jsPsych.timelineVariable('image'),
+                story: jsPsych.timelineVariable('story'),
+                on_finish: updateProgress
+            },
+            {
+                type: jsPsychHtmlButtonResponse,
+                stimulus: jsPsych.timelineVariable('attention_check'),
+                choices: ['True', 'False'],
+                data: {
+                    task: "attention_check",
+                    name: jsPsych.timelineVariable('name')
+                },
+                margin_vertical: "20px",
+                on_finish: updateProgress
+            },
+            {
+                type: jsPsychNormality,
+                name: jsPsych.timelineVariable('name'),
+                image: jsPsych.timelineVariable('image'),
+                story: jsPsych.timelineVariable('story'),
+                outcome: jsPsych.timelineVariable('outcome'),
+                features: jsPsych.timelineVariable('features'),
+                on_finish: updateProgress
+            },
+        ],
+        randomize_order: true,
+    };
+
+    // -----------------------------------------------------
+    // save data
+    // -----------------------------------------------------
+    const prolific_id = jsPsych.data.getURLVariable('PROLIFIC_PID');
+    const experiment_id = '';
+
+    const save_trial_data = {
+        type: jsPsychPipe,
+        action: 'save',
+        experiment_id: experiment_id,
+        filename: `${prolific_id}_trials.csv`,
+        data_string: () => {
+            let rows = [];
+            let story_order = 0;
+
+            for (const trialPage of jsPsych.data.get().filter({ "trial_type": "normality" }).values()) {
+                // Get attention check response (if it exists)
+                let attention_response = '';
+                for (const attentionCheckPage of jsPsych.data.get().filter({ task: "attention_check", name: trialPage.name }).values()) {
+                    attention_response = attentionCheckPage.response;
+                }
+
+                // Loop through each feature in this trial
+                for (let i = 0; i < trialPage.questions.length; i++) {
+                    const featureIndex = trialPage.question_order[i];
+                    const feature = trialPage.questions[featureIndex];
+                    const response = trialPage.response['Q' + featureIndex];
+
+                    rows.push([
+                        prolific_id,
+                        attention_response,
+                        `"${feature}"`,
+                        i,
+                        response,
+                        trialPage.name,
+                        story_order
+                    ].join(','));
+                }
+                story_order += 1;
+            }
+
+            const header = 'id,attention_response,feature,feature_order,response,story_name,story_order';
+            const trials_csv = [header, ...rows].join('\n');
+            console.log(trials_csv);
+            return trials_csv;
+        }
+    };
+
+    const save_participant_data = {
+        type: jsPsychPipe,
+        action: 'save',
+        experiment_id: experiment_id,
+        filename: `${prolific_id}_participant.csv`,
+        data_string: () => {
+            const time = TimeMe.getTimeOnPageInSeconds('page');
+            const data = jsPsych.data.get().filter({trial_type: 'survey-html-form'}).values()[0]['response'];
+            const participant = [
+                prolific_id,
+                `"${data.feedback || ""}"`,
+                data.age || "",
+                data.gender || "",
+                data.race || "",
+                `"${data.ethnicity || ""}"`,
+                time
+            ].join(',');
+            const header = 'id,feedback,age,gender,race,ethnicity,time';
+            const participant_csv = header + '\n' + participant;
+            console.log(participant_csv);
+            return participant_csv;
+        }
+    };
+
+    // -----------------------------------------------------
+    // compile timeline
+    // -----------------------------------------------------
+    let timeline = [];
+    timeline.push(preload_trial);
+    timeline.push({...intro, on_finish: updateProgress});
+    timeline.push(trials);
+    timeline.push({...feedback_demographics, on_finish: updateProgress});
+    timeline.push(save_trial_data);
+    timeline.push(save_participant_data);
+
+    // -----------------------------------------------------
+    // run timeline
+    // -----------------------------------------------------
+    jsPsych.run(timeline);
+
+</script>
+
+</html>
